@@ -28,7 +28,12 @@ defined('_JEXEC') or die('Restricted access');
  */
 
 class JFusionAuth_jira extends JFusionAuth
-{	
+{
+	/**
+	 * @var $helper JFusionHelper_jira
+	 */
+	var $helper;
+
     /**
      * returns the name of this JFusion plugin
      *
@@ -46,11 +51,18 @@ class JFusionAuth_jira extends JFusionAuth
      * @return string
      */
     function generateEncryptedPassword($userinfo)
-    {	
-		if ($userinfo->password == 'invalid') {
-			return 'is_invalid';
-		} else {
-			return 'valid';
-		}
+    {
+	    return $userinfo->password;
     }
+
+	/**
+	 * used by framework to ensure a password test
+	 *
+	 * @param object $userinfo userdata object containing the userdata
+	 *
+	 * @return boolean
+	 */
+	function checkPassword($userinfo) {
+		return $this->helper->checkPassword($userinfo->username, $userinfo->password_clear);
+	}
 }

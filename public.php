@@ -29,6 +29,10 @@ defined('_JEXEC') or die('Restricted access');
  */
 class JFusionPublic_jira extends JFusionPublic
 {
+	/**
+	 * @var $helper JFusionHelper_jira
+	 */
+	var $helper;
 
     /**
      * returns the name of this JFusion plugin
@@ -47,7 +51,7 @@ class JFusionPublic_jira extends JFusionPublic
      */
     function getRegistrationURL()
     {
-        return 'index.php?action=register';
+        return 'secure/Signup!default.jspa';
     }
 
     /**
@@ -57,7 +61,7 @@ class JFusionPublic_jira extends JFusionPublic
      */
     function getLostPasswordURL()
     {
-        return 'index.php?action=reminder';
+        return 'secure/ForgotLoginDetails.jspa';
     }
 
     /**
@@ -67,6 +71,6 @@ class JFusionPublic_jira extends JFusionPublic
      */
     function getLostUsernameURL()
     {
-        return 'index.php?action=reminder';
+        return 'secure/ForgotLoginDetails.jspa';
     }
 }

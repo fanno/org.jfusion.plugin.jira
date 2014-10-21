@@ -1,17 +1,20 @@
 <?php
 defined('_JEXEC') or die('Restricted access');
 
-class JFusionHelper_jira
+/**
+ * Class JFusionHelper_jira
+ */
+class JFusionHelper_jira  extends JFusionPlugin
 {
 	private $curl;
 	private $url;
-	private $response = "";
+	private $response = null;
 	private $headers = array();
+	private $cookies = array();
 
-	private $method = "GET";
-	private $params = null;
+	private $method = 'GET';
+	private $fields = null;
 	private $contentType = null;
-	private $file = null;
 
 	/**
 	 * Returns the name for this plugin
@@ -23,22 +26,19 @@ class JFusionHelper_jira
 	}
 
 	/**
-	 * Private Constructor, sets default options
+	 * Constructor, sets default options
 	 */
 	function __construct() {
-		$params = JFusionFactory::getParams($this->getJname());
-
+		parent::__construct();
 		$this->curl = curl_init();
+
 		curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($this->curl, CURLOPT_AUTOREFERER, true); // This make sure will follow redirects
 		curl_setopt($this->curl, CURLOPT_FOLLOWLOCATION, true); // This too
 		curl_setopt($this->curl, CURLOPT_HEADER, true); // THis verbose option for extracting the headers
 
-
-
-		$this->setUrl($params->get('source_url'));
-		$this->setCredentials($params->get('rest_username'), $params->get('rest_password'));
-
+		$this->setUrl($this->params->get('source_url'));
+		$this->setCredentials($this->params->get('rest_username'), $this->params->get('rest_password'));
 		$this->setContentType('application/json');
 	}
 
@@ -54,7 +54,34 @@ class JFusionHelper_jira
 		$user = null;
 		$this->get('user', '?username=' . $username. '&expand=groups');
 		if ($this->getResponseCode() == 200) {
-			$user = $this->getResponse();
+			$result = $this->getResponse();
+
+			if ($result) {
+				$user = new stdClass();
+				$user->username = $result->name;
+				$user->name = $result->displayName;
+				$user->email = $result->emailAddress;
+				if ($result->active) {
+					$user->block = 0;
+					$user->activation = 0;
+				} else {
+					$user->block = 1;
+					//user not active generate a random code
+					jimport('joomla.user.helper');
+					$result->activation = JUserHelper::genRandomPassword(13);
+				}
+
+				$user->groups = array();
+				$user->groupnames = array();
+
+				foreach($result->groups->items as $group) {
+					if (!isset($user->group_id)) {
+						$user->group_id = $group->name;
+					}
+					$user->groups[] = $group->name;
+					$user->groupnames[] = $group->name;
+				}
+			}
 		}
 		return $user;
 	}
@@ -64,8 +91,8 @@ class JFusionHelper_jira
 	 *
 	 * @param stdclass $userinfo
 	 *
-	 * @access   public
-	 * @return object
+	 * @access public
+	 * @return boolean
 	 */
 	public function createUser($userinfo) {
 		$success = false;
@@ -92,8 +119,8 @@ class JFusionHelper_jira
 	 *
 	 * @param stdclass $userinfo
 	 *
-	 * @access   public
-	 * @return object
+	 * @access public
+	 * @return boolean
 	 */
 	public function updateEmail($userinfo) {
 		$success = false;
@@ -116,8 +143,8 @@ class JFusionHelper_jira
 	 *
 	 * @param stdclass $userinfo
 	 *
-	 * @access   public
-	 * @return object
+	 * @access public
+	 * @return boolean
 	 */
 	public function updatePassword($userinfo) {
 		$success = false;
@@ -141,8 +168,8 @@ class JFusionHelper_jira
 	 *
 	 * @param stdclass $userinfo
 	 *
-	 * @access   public
-	 * @return object
+	 * @access public
+	 * @return boolean
 	 */
 	public function updateBlock($userinfo) {
 		$success = false;
@@ -174,7 +201,6 @@ class JFusionHelper_jira
 	 */
 	public function deleteUser($username) {
 		$success = false;
-//		$this->delete('user/delete', '?username=' . $username);
 		$this->delete('user', '?username=' . $username);
 		if ($this->getResponseCode() == 204) {
 			$success = true;
@@ -185,29 +211,57 @@ class JFusionHelper_jira
 	/**
 	 * getUserList
 	 *
-	 * @access   public
+	 * @access public
 	 * @return array
 	 */
 	public function getUserList() {
-		$result = array();
-//		$this->get('user/search', '?username=e&startAt=0&maxResults=1000&includeInactive=1');
-//		$this->get('user/picker', '?query=e&maxResults=1000');
+		$users = array();
+		/*
+				$letters = range('a', 'z');
+				$letters = 'a e i o u y';
+				$letters = explode(' ', $letters);
 
-//		var_dump($this->getResponseCode());
-//		var_dump($this);
-		if ($this->getResponseCode() == 204) {
-//			$this->getResponse();
-//			$success = true;
-		}
-		return $result;
+				foreach($letters as $letter) {
+					$start = 1;
+					while(true) {
+						$this->get('user/search', '?username=' . $letter . '&startAt=' . $start . '&maxResults=1000&includeInactive=1');
+
+						if ($this->getResponseCode() == 200) {
+							$responce = $this->getResponse();
+							if ($responce && is_array($responce)) {
+								foreach($responce as $user) {
+									if (!isset($users[$user->name])) {
+										$u = new stdClass();
+										$u->id = $user->key;
+										$u->name = $user->name;
+
+										$users[$user->name] = $u;
+									}
+								}
+								if (count($responce) != 1000) {
+									break;
+								}
+								$start += 1000;
+							} else {
+								break;
+							}
+						} else {
+							break;
+						}
+					}
+				}
+				$users = array_values($users);
+		//		$this->get('user/picker', '?query=e&maxResults=1000');
+		var_dump($users);
+		die();
+		*/
+		return $users;
 	}
 
 	/**
 	 * getUserCount
 	 *
-	 * @internal param string $username holds the new user data
-	 *
-	 * @access   public
+	 * @access public
 	 * @return int
 	 */
 	public function getUserCount() {
@@ -218,12 +272,11 @@ class JFusionHelper_jira
 	/**
 	 * check password
 	 *
-	 * @access   public
-	 *
 	 * @param string $user
 	 * @param string $pass
 	 *
-	 * @return object
+	 * @access public
+	 * @return boolean
 	 */
 	public function checkPassword($user, $pass) {
 		$client = new self();
@@ -234,24 +287,36 @@ class JFusionHelper_jira
 	/**
 	 * get groups
 	 *
-	 * @access   public
+	 * @access public
 	 * @return object
+	 *
+	 * return array
 	 */
 	public function getGroups() {
 		$this->get('groups/picker');
 
-		return $this->getResponse();
+		$response = $this->getResponse();
+		$usergrouplist = array();
+		if ($response) {
+			if ($this->getResponseCode() == 200) {
+				if (isset($response->groups)) {
+					foreach($response->groups as $group) {
+						$g = new stdClass;
+						$g->id = $group->name;
+						$g->name = $group->html;
+						$usergrouplist[] = $g;
+					}
+				}
+			}
+		}
+		return $usergrouplist;
 	}
 
 	/**
 	 * add group
 	 *
-	 * @access   public
-	 *
 	 * @param string $username
 	 * @param string $group
-	 *
-	 * @return object
 	 */
 	public function addGroup($username, $group) {
 		$data = new stdclass();
@@ -266,12 +331,8 @@ class JFusionHelper_jira
 	/**
 	 * remove group
 	 *
-	 * @access   public
-	 *
 	 * @param $username
 	 * @param $group
-	 *
-	 * @return object
 	 */
 	public function removeGroup($username, $group) {
 		$this->delete('group/user', '?groupname=' . $group . '&username=' . $username);
@@ -279,7 +340,7 @@ class JFusionHelper_jira
 
 
 	/**
-	 * @return bool
+	 * @return boolean
 	 */
 	public function ping() {
 		$result = false;
@@ -319,21 +380,21 @@ class JFusionHelper_jira
 	 */
 	public function execute($path) {
 		$url = $this->url;
-		if($this->method === "POST") {
+		if($this->method === 'POST') {
 			$url .=  $path;
 
 			curl_setopt($this->curl, CURLOPT_POST, true);
-			curl_setopt($this->curl, CURLOPT_POSTFIELDS, $this->params);
-		} else if($this->method == "GET") {
+			curl_setopt($this->curl, CURLOPT_POSTFIELDS, $this->fields);
+		} else if($this->method == 'GET') {
 			$url .= $path. $this->treatURL();
 
 			curl_setopt($this->curl, CURLOPT_HTTPGET, true);
-		} else if($this->method === "PUT") {
+		} else if($this->method === 'PUT') {
 			$url .= $path;
 
 			curl_setopt($this->curl, CURLOPT_CUSTOMREQUEST, $this->method);
-			curl_setopt($this->curl, CURLOPT_POSTFIELDS, $this->params);
-		} else if($this->method === "DELETE") {
+			curl_setopt($this->curl, CURLOPT_POSTFIELDS, $this->fields);
+		} else if($this->method === 'DELETE') {
 			$url .= $path . $this->treatURL();
 
 			curl_setopt($this->curl, CURLOPT_CUSTOMREQUEST, $this->method);
@@ -343,7 +404,7 @@ class JFusionHelper_jira
 			curl_setopt($this->curl, CURLOPT_CUSTOMREQUEST, $this->method);
 		}
 		if($this->contentType != null) {
-			curl_setopt($this->curl, CURLOPT_HTTPHEADER, array("Content-Type: " . $this->contentType));
+			curl_setopt($this->curl, CURLOPT_HTTPHEADER, array('Content-Type: ' . $this->contentType));
 		}
 
 		curl_setopt($this->curl, CURLOPT_URL, $url);
@@ -359,30 +420,30 @@ class JFusionHelper_jira
 	 */
 	private function treatURL() {
 		$url = '';
-		if(is_array($this->params) && count($this->params) >= 1) { // Transform parameters in key/value pars in URL
+		if(is_array($this->fields) && count($this->fields) >= 1) { // Transform parameters in key/value pars in URL
 			$url = '?';
-			$params = array();
-			foreach($this->params as $k=>$v) {
-
-				$params[] = urlencode($k)."=".urlencode($v);
+			$fields = array();
+			foreach($this->fields as $k=>$v) {
+				$fields[] = urlencode($k) . '=' . urlencode($v);
 			}
-			$params = implode('&', $params);
+			$fields = implode('&', $fields);
 		} else {
-			$params = $this->params;
+			$fields = $this->fields;
 		}
-
-
-		return $url . $params;
+		return $url . $fields;
 	}
 
 	/**
 	 * Treats the Response for extracting the Headers and Response
 	 *
-	 * @param string $r
+	 * @param string $responce
 	 */
-	private function treatResponse($r) {
-		if ($r && strlen($r) > 0) {
-			$parts  = explode("\n\r",$r); // HTTP packets define that Headers end in a blank line (\n\r) where starts the body
+	private function treatResponse($responce) {
+		$this->headers = array();
+		$this->cookies = array();
+		$this->response = null;
+		if ($responce && strlen($responce) > 0) {
+			$parts  = explode("\n\r", $responce); // HTTP packets define that Headers end in a blank line (\n\r) where starts the body
 
 			$test = $parts[0];
 
@@ -396,20 +457,57 @@ class JFusionHelper_jira
 			$headers = explode("\n", $parts[0]);
 
 			$header = array();
+			$cookies = array();
 			foreach ($headers as $part) {
 				$part = trim($part);
 				if (!empty($part)) {
-					$header[] = trim($part);
+					if (strpos($part, 'Set-Cookie') === 0) {
+						list(, $part) = explode(':', $part, 2);
+
+						$part = explode(';', $part);
+
+						$cookie = new stdClass();
+
+						list($cookie->name, $cookie->value) = explode('=', $part[0]);
+						$cookie->name = trim($cookie->name);
+						$cookie->value = trim($cookie->value);
+						$cookie->domain = null;
+						$cookie->path = null;
+						$cookie->expires = null;
+						$cookie->secure = false;
+						$cookie->httpOnly = false;
+
+						unset($part[0]);
+
+						foreach($part as $value) {
+							$value = trim($value);
+							if (!empty($value)) {
+								if ( strtolower($value) == 'secure' ) {
+									$cookie->secure = true;
+								} else if ( strtolower($value) == 'httponly' ) {
+									$cookie->httpOnly = true;
+								} else {
+									list($type, $value) = explode('=', $value, 2);
+
+									$type = strtolower($type);
+									$cookie->$type = $value;
+								}
+							}
+						}
+						$this->cookies[] = $cookie;
+					} else {
+						$header[] = $part;
+					}
+
 				}
 			}
+
 			$body = null;
 			if (isset($parts[1])) {
 				$body = trim($parts[1]);
 			}
 
-
-
-			list($protocol, $code, $message) =  explode(" ", $header[0], 3);
+			list($protocol, $code, $message) =  explode(' ', $header[0], 3);
 			$this->headers['code'] = $code;
 			$this->headers['message'] = $message;
 			unset($header[0]);
@@ -424,7 +522,6 @@ class JFusionHelper_jira
 			$this->response = json_decode($this->response);
 		}
 	}
-
 	/**
 	 * @return array
 	 */
@@ -433,10 +530,17 @@ class JFusionHelper_jira
 	}
 
 	/**
-	 * @return string
+	 * @return array
+	 */
+	public function getCookies() {
+		return $this->cookies;
+	}
+
+	/**
+	 * @return mixed
 	 */
 	public function getResponse() {
-		return $this->response ;
+		return $this->response;
 	}
 
 	/**
@@ -476,22 +580,9 @@ class JFusionHelper_jira
 	}
 
 	/**
-	 * This closes the connection and release resources
-	 *
-	 */
-	public function close() {
-//		curl_close($this->curl);
-//		$this->curl = null ;
-		if($this->file !=null) {
-			fclose($this->file);
-		}
-	}
-
-	/**
 	 * Sets the URL to be Called
 	 *
 	 * @param $url
-	 *
 	 */
 	public function setUrl($url) {
 		$this->url = $url . 'rest/api/2/';
@@ -500,6 +591,7 @@ class JFusionHelper_jira
 	/**
 	 * Set the Content-Type of the request to be send
 	 * Format like "application/xml" or "text/plain" or other
+	 *
 	 * @param string $contentType
 	 */
 	public function setContentType($contentType) {
@@ -508,6 +600,7 @@ class JFusionHelper_jira
 
 	/**
 	 * Set the Credentials for BASIC Authentication
+	 *
 	 * @param string $user
 	 * @param string $pass
 	 */
@@ -533,26 +626,21 @@ class JFusionHelper_jira
 	 * It can be both a key/value par array (as in array("key"=>"value"))
 	 * or a string containing the body of the request, like a XML, JSON or other
 	 * Proper content-type should be set for the body if not a array
-	 * @param mixed $params
+	 *
+	 * @param mixed $fields
 	 */
-	public function setParameters($params) {
-		$this->params = $params;
+	public function setParameters($fields) {
+		$this->fields = $fields;
 	}
 
 	/**
 	 * Convenience method wrapping a commom POST call
 	 *
 	 * @param string $url
-	 * @param null   $params
-	 * @param string $contentType ="multpary/form-data" [optional] commom post (multipart/form-data) as default
-	 *
-	 * @internal param string $user =null [optional]
-	 * @internal param null $pwd
-	 * @internal param \params $mixed
-	 * @internal param string $password =null [optional]
+	 * @param null   $fields
 	 */
-	public function post($url, $params = null, $contentType = "multipart/form-data") {
-		$this->call("POST", $url, $params, $contentType);
+	public function post($url, $fields = null) {
+		$this->call("POST", $url, $fields);
 	}
 
 	/**
@@ -560,67 +648,41 @@ class JFusionHelper_jira
 	 *
 	 * @param string $path
 	 * @param string $body
-	 * @param string $contentType =null [optional]
-	 *
-	 * @internal param string $user =null [optional]
-	 * @internal param null $pwd
-	 * @internal param string $url
-	 * @internal param string $password =null [optional]
 	 */
-	public function put($path, $body, $contentType = null) {
-		$this->call("PUT", $path, $body, $contentType);
+	public function put($path, $body) {
+		$this->call("PUT", $path, $body);
 	}
 
 	/**
 	 * Convenience method wrapping a commom GET call
 	 *
-	 * @param       $path
-	 * @param array $params
-	 *
-	 * @internal param string $url
-	 * @internal param string $user =null [optional]
-	 * @internal param null $pwd
-	 *
-	 * @internal param \params $array
-	 * @internal param string $password =null [optional]
+	 * @param string $path
+	 * @param array  $fields
 	 */
-	public function get($path, $params = null) {
-		$this->call("GET", $path, $params);
+	public function get($path, $fields = null) {
+		$this->call("GET", $path, $fields);
 	}
 
 	/**
 	 * Convenience method wrapping a commom delete call
 	 *
-	 * @param        $path
-	 * @param array  $params
-	 *
-	 * @internal param string $user =null [optional]
-	 * @internal param null $pwd
-	 *
-	 * @internal param string $url
-	 * @internal param \params $array
-	 * @internal param string $password =null [optional]
+	 * @param string $path
+	 * @param array  $fields
 	 */
-	public function delete($path, $params = null) {
-		$this->call("DELETE", $path, $params);
+	public function delete($path, $fields = null) {
+		$this->call("DELETE", $path, $fields);
 	}
 
 	/**
 	 * Convenience method wrapping a commom custom call
 	 *
 	 * @param string $method
-	 * @param        $path
+	 * @param string $path
 	 * @param string $body
-	 *
-	 * @internal param string $url
-	 * @internal param string $user =null [optional]
-	 * @internal param null $pwd
-	 * @internal param string $password =null [optional]
 	 */
-	public function call($method, $path ,$body) {
+	private function call($method, $path ,$body) {
 		$this->setMethod($method);
 		$this->setParameters($body);
 		$this->execute($path);
-		$this->close();
 	}
 }

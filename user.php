@@ -18,12 +18,6 @@
 defined('_JEXEC') or die('Restricted access');
 
 /**
- * Load the JFusion framework
- */
-require_once JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_jfusion' . DS . 'models' . DS . 'model.jfusion.php';
-require_once JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_jfusion' . DS . 'models' . DS . 'model.abstractuser.php';
-require_once JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_jfusion' . DS . 'models' . DS . 'model.jplugin.php';
-/**
  * JFusion User Class for JIRA
  * For detailed descriptions on these functions please check the model.abstractuser.php
  *
@@ -41,6 +35,11 @@ require_once JPATH_ADMINISTRATOR . DS . 'components' . DS . 'com_jfusion' . DS .
  */
 class JFusionUser_jira extends JFusionUser
 {
+	/**
+	 * @var $helper JFusionHelper_jira
+	 */
+	var $helper;
+
     /**
      * returns the name of this JFusion plugin
      *
@@ -65,55 +64,12 @@ class JFusionUser_jira extends JFusionUser
         list($identifier_type, $identifier) = $this->getUserIdentifier($userinfo, 'a.memberName', 'a.emailAddress');
         // initialise some objects
 
-	    $params = JFusionFactory::getParams($this->getJname());
-	    /**
-	     * @ignore
-	     * @var $helper JFusionHelper_jira
-	     */
-	    $helper = JFusionFactory::getHelper($this->getJname());
-
-	    $result = $helper->getUser($userinfo->username);
+	    $result = $this->helper->getUser($userinfo->username);
 
         if ($result) {
-        		$user = new stdClass();
-	        	$user->username = $result->name;
-	        	$user->name = $result->displayName;
-	        	$user->email = $result->emailAddress;
-	        	$user->original = $result;
-	            if ($result->active) {
-		            $user->block = 0;
-		            $user->activation = 0;
-	            } else {
-		            $user->block = 1;
-		            //user not active generate a random code
-		            jimport('joomla.user.helper');
-		            $result->activation = JUserHelper::genRandomPassword(13);
-	            }
-
-		        $user->groups = array();
-		        $user->groupnames = array();
-
-		        foreach($result->groups->items as $group) {
-					if (!isset($user->group_id)) {
-						$user->group_id = $group->name;
-					}
-			        $user->groups[] = $group->name;
-			        $user->groupnames[] = $group->name;
-		        }
-
-	        	if (isset($userinfo->password_clear)) {
-		            if ($helper->checkPassword($userinfo->username, $userinfo->password_clear)) {
-						$user->password = 'valid';
-		            } else {
-						$user->password = 'invalid';
-		            }
-	        	} else {
-			        $user->password = 'unknown';
-		        }
-        } else {
-			$user = null;
+	        $result->password = 'unknown';
         }
-        return $user;
+        return $result;
     }
 
     /**
@@ -131,16 +87,10 @@ class JFusionUser_jira extends JFusionUser
         $status['debug'] = array();
         $status['error'] = array();
 
-	    /**
-	     * @ignore
-	     * @var $helper JFusionHelper_jira
-	     */
-	    $helper = JFusionFactory::getHelper($this->getJname());
-
-        if ($helper->deleteUser($userinfo->username)) {
+        if ($this->helper->deleteUser($userinfo->username)) {
 	        $status['debug'][] = JText::_('USER_DELETION') . ' ' . $userinfo->username;
         } else {
-	        $status['error'][] = JText::_('USER_DELETION_ERROR') . ' : ' . $userinfo->username . ' : ' . $helper->getErrorMessage();
+	        $status['error'][] = JText::_('USER_DELETION_ERROR') . ' : ' . $userinfo->username. ' : ' . $this->helper->getErrorMessage();
         }
         return $status;
     }
@@ -153,11 +103,7 @@ class JFusionUser_jira extends JFusionUser
 	 * @return void
 
 	function blockUser($userinfo, &$existinguser, &$status) {
-	    //@ignore
-	    //@var $helper JFusionHelper_jira
-	    $helper = JFusionFactory::getHelper($this->getJname());
-
-	    if ($helper->updateBlock($userinfo)) {
+	    if ($this->helper->updateBlock($userinfo)) {
 		    $status['debug'][] = JText::_('BLOCK_UPDATE') . ': ' . $existinguser->block . ' -> ' . $userinfo->block;
 	    } else {
 		    $status['error'][] = JText::_('BLOCK_UPDATE_ERROR') . $helper->getErrorMessage();
@@ -173,11 +119,7 @@ class JFusionUser_jira extends JFusionUser
 	 * @return void
 
 	function unblockUser($userinfo, &$existinguser, &$status) {
-		//@ignore
-		//@var $helper JFusionHelper_jira
-		$helper = JFusionFactory::getHelper($this->getJname());
-
-		if ($helper->updateBlock($userinfo)) {
+		if ($this->helper->updateBlock($userinfo)) {
 			$status['debug'][] = JText::_('BLOCK_UPDATE') . ': ' . $existinguser->block . ' -> ' . $userinfo->block;
 		} else {
 			$status['error'][] = JText::_('BLOCK_UPDATE_ERROR') . $helper->getErrorMessage();
@@ -245,16 +187,10 @@ class JFusionUser_jira extends JFusionUser
      */
     function updatePassword($userinfo, &$existinguser, &$status)
     {
-	    /**
-	     * @ignore
-	     * @var $helper JFusionHelper_jira
-	     */
-	    $helper = JFusionFactory::getHelper($this->getJname());
-
-	    if ($helper->updatePassword($userinfo)) {
+	    if ($this->helper->updatePassword($userinfo)) {
 		    $status['debug'][] = JText::_('PASSWORD_UPDATE') . ' ' . substr($existinguser->password, 0, 6) . '********';
 	    } else {
-		    $status['error'][] = JText::_('PASSWORD_UPDATE_ERROR') . ' ' . $helper->getErrorMessage();
+		    $status['error'][] = JText::_('PASSWORD_UPDATE_ERROR') . ' ' . $this->helper->getErrorMessage();
 	    }
     }
 
@@ -284,16 +220,10 @@ class JFusionUser_jira extends JFusionUser
      */
     function updateEmail($userinfo, &$existinguser, &$status)
     {
-	    /**
-	     * @ignore
-	     * @var $helper JFusionHelper_jira
-	     */
-	    $helper = JFusionFactory::getHelper($this->getJname());
-
-        if ($helper->updateEmail($userinfo)) {
+        if ($this->helper->updateEmail($userinfo)) {
 	        $status['debug'][] = JText::_('EMAIL_UPDATE') . ': ' . $existinguser->email . ' -> ' . $userinfo->email;
         } else {
-	        $status['error'][] = JText::_('EMAIL_UPDATE_ERROR') . ' ' . $helper->getErrorMessage();
+	        $status['error'][] = JText::_('EMAIL_UPDATE_ERROR') . ' ' . $this->helper->getErrorMessage();
         }
     }
 
@@ -309,28 +239,21 @@ class JFusionUser_jira extends JFusionUser
      */
     function updateUsergroup($userinfo, &$existinguser, &$status)
     {
-        $params = JFusionFactory::getParams($this->getJname());
         //get the usergroup and determine if working in advanced or simple mode
 
         $groups = JFusionFunction::getCorrectUserGroups($this->getJname(),$userinfo);
 	    if (!isset($groups[0])) {
 		    $status['error'][] = JText::_('GROUP_UPDATE_ERROR');
 	    } else {
-		    /**
-		     * @ignore
-		     * @var $helper JFusionHelper_jira
-		     */
-		    $helper = JFusionFactory::getHelper($this->getJname());
-
 		    foreach($groups as $group) {
 			    if (!in_array($group, $existinguser->groups)) {
-				    $helper->addGroup($existinguser->username, $group);
+				    $this->helper->addGroup($existinguser->username, $group);
 			    }
 		    }
 
 			foreach($existinguser->groups as $group) {
 				if (!in_array($group, $groups)) {
-					$helper->removeGroup($existinguser->username, $group);
+					$this->helper->removeGroup($existinguser->username, $group);
 				}
 			}
 		    $status['debug'][] = JText::_('GROUP_UPDATE') . ': ' . implode (' , ', $existinguser->groups) . ' -> ' . implode (' , ', $groups);
@@ -349,8 +272,7 @@ class JFusionUser_jira extends JFusionUser
     function createUser($userinfo, &$status)
     {
         //we need to create a new SMF user
-        $params = JFusionFactory::getParams($this->getJname());
-        $source_path = $params->get('source_path');
+        $source_path = $this->params->get('source_path');
         
         $groups = JFusionFunction::getCorrectUserGroups($this->getJname(), $userinfo);
 		
@@ -358,22 +280,16 @@ class JFusionUser_jira extends JFusionUser
             //TODO: change error message
             $status['error'][] = JText::_('GROUP_UPDATE_ERROR') . ": " . JText::_('ADVANCED_GROUPMODE_MASTER_NOT_HAVE_GROUPID');
         } else {
-			/**
-			 * @ignore
-			 * @var $helper JFusionHelper_jira
-			 */
-			$helper = JFusionFactory::getHelper($this->getJname());
-
-			if ($helper->createUser($userinfo)) {
+			if ($this->helper->createUser($userinfo)) {
 				foreach($groups as $group) {
-					$helper->addGroup($userinfo->username, $group);
+					$this->helper->addGroup($userinfo->username, $group);
 				}
 				//return the good news
 				$status['debug'][] = JText::_('USER_CREATION');
 				$status['userinfo'] = $this->getUser($userinfo);
 			} else {
 				//return the error
-				$status['error'][] = JText::_('USER_CREATION_ERROR') . ' : ' . $helper->getErrorMessage();
+				$status['error'][] = JText::_('USER_CREATION_ERROR') . ' : ' . $this->helper->getErrorMessage();
 			}
         }
         return $status;
