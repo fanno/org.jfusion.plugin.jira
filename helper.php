@@ -212,49 +212,40 @@ class JFusionHelper_jira  extends JFusionPlugin
 	 * getUserList
 	 *
 	 * @access public
+	 *
+	 * @param int $limitstart
+	 * @param int $limit
+	 *
 	 * @return array
 	 */
-	public function getUserList() {
+	public function getUserList($limitstart = 0, $limit = 0) {
 		$users = array();
-		/*
-				$letters = range('a', 'z');
-				$letters = 'a e i o u y';
-				$letters = explode(' ', $letters);
 
-				foreach($letters as $letter) {
-					$start = 1;
-					while(true) {
-						$this->get('user/search', '?username=' . $letter . '&startAt=' . $start . '&maxResults=1000&includeInactive=1');
+		if ($limit == 0) {
+			$limit = $this->getUserCount();
+		}
+		$total = $limitstart + $limit;
+		while (true) {
+			$this->get('group', '?groupname=jira-users&expand=users[' . $limitstart . ':' . $total . ']');
+			if ($this->getResponseCode() == 200) {
+				$responce = $this->getResponse();
+				foreach($responce->users->items as $item) {
+					$user = new stdClass();
 
-						if ($this->getResponseCode() == 200) {
-							$responce = $this->getResponse();
-							if ($responce && is_array($responce)) {
-								foreach($responce as $user) {
-									if (!isset($users[$user->name])) {
-										$u = new stdClass();
-										$u->id = $user->key;
-										$u->name = $user->name;
+					$user->userid = $item->name;
+					$user->username = $item->name;
+					$user->email = $item->emailAddress;
 
-										$users[$user->name] = $u;
-									}
-								}
-								if (count($responce) != 1000) {
-									break;
-								}
-								$start += 1000;
-							} else {
-								break;
-							}
-						} else {
-							break;
-						}
-					}
+					$users[] = $user;
+					$limitstart++;
 				}
-				$users = array_values($users);
-		//		$this->get('user/picker', '?query=e&maxResults=1000');
-		var_dump($users);
-		die();
-		*/
+				if (count($responce->users->items) != 50 || count($users) >= $limit) {
+					break;
+				}
+			} else {
+				break;
+			}
+		}
 		return $users;
 	}
 
@@ -265,8 +256,14 @@ class JFusionHelper_jira  extends JFusionPlugin
 	 * @return int
 	 */
 	public function getUserCount() {
-		$result = $this->getUserList();
-		return count($result);
+		$count = 0;
+
+		$this->get('group', '?groupname=jira-users');
+		if ($this->getResponseCode() == 200) {
+			$responce = $this->getResponse();
+			$count = $responce->users->size;
+		}
+		return $count;
 	}
 
 	/**
