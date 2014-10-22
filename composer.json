@@ -1,0 +1,33 @@
+{
+    "name": "fanno/plugin-jira",
+    "type": "jfusion-plugin",
+    "description": "Plugin for dokuwiki jfusion framework",
+    "keywords": ["jfusion", "plugin", "jira"],
+    "homepage": "http://jfusion.org",
+    "license": "GPL-2.0+",
+    "authors": [
+        {
+            "name": "Morten Hundevad",
+            "email": "fannoj@gmail.com",
+            "homepage": "http://fanno.dk",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": ">=5.3.10"
+    },
+    "require-dev": {
+        "jfusion/framework": "dev-master",
+        "jfusion/platform-joomla": "dev-master"
+    },
+    "autoload": {
+        "psr-4": {
+            "JFusion\\Plugins\\jira\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "JFusion\\Plugins\\jira\\tests\\": ".Tests"
+        }
+    }
+}

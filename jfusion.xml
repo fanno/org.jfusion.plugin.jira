@@ -2,24 +2,22 @@
 <!DOCTYPE extension SYSTEM "http://www.jfusion.org/xml/dtd/2.0/plugin-install.dtd">
 <extension type="jfusion" version="1.5.0">
 	<name>jira</name>
-	<author>JFusion Development Team</author>
-	<creationDate>June 2008</creationDate>
+    <creationDate>June 2008</creationDate>
+    <author>JFusion Development Team</author>
+    <authorEmail>fannoj@gmail.org</authorEmail>
+    <authorUrl>www.jfusion.org</authorUrl>
 	<copyright>Copyright (C) 2008 JFusion. All rights reserved.</copyright>
 	<license>http://www.gnu.org/licenses/gpl-2.0.html GNU/GPL</license>
-	<authorEmail>webmaster@jfusion.org</authorEmail>
-	<authorUrl>www.jfusion.org</authorUrl>
-	<version>2.0.0-010</version>
-	<description>Jira plugin for JFusion</description>
+    <version>3.0.0-000</version>
+    <revision>$revision$</revision>
+    <timestamp>$timestamp$</timestamp>
 
-	<files>
-		<filename>admin.php</filename>
-		<filename>auth.php</filename>
-		<filename>index.html</filename>
-		<filename>jfusion.xml</filename>
-		<filename>helper.php</filename>
-		<filename>public.php</filename>
-		<filename>user.php</filename>
-	</files>
+    <description>Jira plugin for JFusion</description>
+
+    <files>
+        <folder>src</folder>
+        <filename>jfusion.xml</filename>
+    </files>
 
     <form>
         <fields name="params">

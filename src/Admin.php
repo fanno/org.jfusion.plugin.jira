@@ -1,70 +1,51 @@
-<?php
+<?php namespace JFusion\Plugins\jira;
 
 /**
- * file containing administrator function for the jfusion plugin
- *
- * PHP version 5
- *
- * @category   JFusion
- * @package    JFusionPlugins
- * @subpackage JIRA
- * @author     JFusion Team <webmaster@jfusion.org>
+ * @category   Plugins
+ * @package    JFusion\Plugins
+ * @subpackage jira
+ * @author     Morten Hundevad <fannoj@gmail.com>
  * @copyright  2008 JFusion. All rights reserved.
  * @license    http://www.gnu.org/copyleft/gpl.html GNU/GPL
  * @link       http://www.jfusion.org
  */
 
-// no direct access
-defined('_JEXEC') or die('Restricted access');
+
+use JFusion\User\Groups;
+use Joomla\Language\Text;
+use RuntimeException;
 
 /**
- * JFusion Admin Class for JIRA
- * For detailed descriptions on these functions please check the model.abstractadmin.php
+ * JFusion user class for jira
  *
- * @category   JFusion
- * @package    JFusionPlugins
- * @subpackage JIRA
- * @author     JFusion Team <webmaster@jfusion.org>
+ * @category   Plugins
+ * @package    JFusion\Plugins
+ * @subpackage jira
+ * @author     Morten Hundevad <fannoj@gmail.com>
  * @copyright  2008 JFusion. All rights reserved.
  * @license    http://www.gnu.org/copyleft/gpl.html GNU/GPL
  * @link       http://www.jfusion.org
  */
-
-class JFusionAdmin_jira extends JFusionAdmin
+class Admin extends \JFusion\Plugin\Admin
 {
 	/**
-	 * @var $helper JFusionHelper_jira
+	 * @var $helper Helper
 	 */
 	var $helper;
 
-    /**
-     * returns the name of this JFusion plugin
-     *
-     * @return string name of current JFusion plugin
-     */
-    function getJname()
-    {
-        return 'jira';
-    }
-
-    /**
-     * check config
-     *
-     * @return array status message
-     */
+	/**
+	 * check config
+	 *
+	 * @throws RuntimeException
+	 * @return array status message
+	 */
     function checkConfig()
     {
-        $status = array();
-
 	    $result = $this->helper->ping();
-        if ($result) {
-            $status['config'] = 1;
-            $status['message'] = JText::_('GOOD_CONFIG');
-        } else {
-            $status['config'] = 0;
-            $status['message'] = JText::_('Unable to connect to jira: ') . $this->helper->getErrorMessage();
+        if (!$result) {
+	        throw new RuntimeException(Text::_('Unable to connect to jira: ') . $this->helper->getErrorMessage());
         }
-	    return $status;
+	    return true;
     }
 
 	/**
@@ -77,7 +58,7 @@ class JFusionAdmin_jira extends JFusionAdmin
 	 */
 	function getUserList($limitstart = 0, $limit = 0)
 	{
-	    return $this->helper->getUserList();
+	    return $this->helper->getUserList($limitstart, $limit);
     }
 
     /**
@@ -108,7 +89,7 @@ class JFusionAdmin_jira extends JFusionAdmin
      */
     function getDefaultUsergroup()
     {
-	    $usergroup = JFusionFunction::getUserGroups($this->getJname(), true);
+	    $usergroup = Groups::get($this->getJname(), true);
 	    return $usergroup;
     }
 
@@ -119,8 +100,7 @@ class JFusionAdmin_jira extends JFusionAdmin
 	 */
 	function allowRegistration()
 	{
-		$params = JFusionFactory::getParams($this->getJname());
-		$registration = $params->get('registration', true);
+		$registration = $this->params->get('registration', true);
 		if ($registration) {
 			$registration = true;
 		} else {

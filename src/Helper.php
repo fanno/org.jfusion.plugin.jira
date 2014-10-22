@@ -1,10 +1,31 @@
-<?php
-defined('_JEXEC') or die('Restricted access');
+<?php namespace JFusion\Plugins\jira;
 
 /**
- * Class JFusionHelper_jira
+ * @category   Plugins
+ * @package    JFusion\Plugins
+ * @subpackage jira
+ * @author     Morten Hundevad <fannoj@gmail.com>
+ * @copyright  2008 JFusion. All rights reserved.
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU/GPL
+ * @link       http://www.jfusion.org
  */
-class JFusionHelper_jira  extends JFusionPlugin
+
+use JFusion\Plugin\Plugin;
+use JFusion\User\Userinfo;
+use stdClass;
+
+/**
+ * JFusion user class for jira
+ *
+ * @category   Plugins
+ * @package    JFusion\Plugins
+ * @subpackage jira
+ * @author     Morten Hundevad <fannoj@gmail.com>
+ * @copyright  2008 JFusion. All rights reserved.
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU/GPL
+ * @link       http://www.jfusion.org
+ */
+class Helper extends Plugin
 {
 	private $curl;
 	private $url;
@@ -17,19 +38,10 @@ class JFusionHelper_jira  extends JFusionPlugin
 	private $contentType = null;
 
 	/**
-	 * Returns the name for this plugin
-	 *
-	 * @return string
+	 * @param string $instance instance name of this plugin
 	 */
-	function getJname() {
-		return 'jira';
-	}
-
-	/**
-	 * Constructor, sets default options
-	 */
-	function __construct() {
-		parent::__construct();
+	function __construct($instance) {
+		parent::__construct($instance);
 		$this->curl = curl_init();
 
 		curl_setopt($this->curl, CURLOPT_RETURNTRANSFER, true);
@@ -67,8 +79,8 @@ class JFusionHelper_jira  extends JFusionPlugin
 				} else {
 					$user->block = 1;
 					//user not active generate a random code
-					jimport('joomla.user.helper');
-					$result->activation = JUserHelper::genRandomPassword(13);
+
+					$result->activation = $this->genRandomPassword(13);
 				}
 
 				$user->groups = array();
@@ -89,12 +101,12 @@ class JFusionHelper_jira  extends JFusionPlugin
 	/**
 	 * create user
 	 *
-	 * @param stdclass $userinfo
+	 * @param Userinfo $userinfo
 	 *
 	 * @access public
 	 * @return boolean
 	 */
-	public function createUser($userinfo) {
+	public function createUser(Userinfo $userinfo) {
 		$success = false;
 		$data = new stdclass();
 
@@ -117,12 +129,12 @@ class JFusionHelper_jira  extends JFusionPlugin
 	/**
 	 * update password
 	 *
-	 * @param stdclass $userinfo
+	 * @param Userinfo $userinfo
 	 *
 	 * @access public
 	 * @return boolean
 	 */
-	public function updateEmail($userinfo) {
+	public function updateEmail(Userinfo $userinfo) {
 		$success = false;
 		$data = new stdclass();
 
@@ -141,12 +153,12 @@ class JFusionHelper_jira  extends JFusionPlugin
 	/**
 	 * update password
 	 *
-	 * @param stdclass $userinfo
+	 * @param Userinfo $userinfo
 	 *
 	 * @access public
 	 * @return boolean
 	 */
-	public function updatePassword($userinfo) {
+	public function updatePassword(Userinfo $userinfo) {
 		$success = false;
 		$data = new stdclass();
 
@@ -166,12 +178,12 @@ class JFusionHelper_jira  extends JFusionPlugin
 	/**
 	 * update block
 	 *
-	 * @param stdclass $userinfo
+	 * @param Userinfo $userinfo
 	 *
 	 * @access public
 	 * @return boolean
 	 */
-	public function updateBlock($userinfo) {
+	public function updateBlock(Userinfo $userinfo) {
 		$success = false;
 		$data = new stdclass();
 
@@ -279,7 +291,7 @@ class JFusionHelper_jira  extends JFusionPlugin
 	 * @return boolean
 	 */
 	public function checkPassword($user, $pass) {
-		$client = new self();
+		$client = new self($this->getJname());
 		$client->setCredentials($user, $pass);
 		return $client->ping();
 	}
