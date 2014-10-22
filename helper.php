@@ -185,34 +185,59 @@ class JFusionHelper_jira
 	/**
 	 * getUserList
 	 *
-	 * @access   public
+	 * @access public
+	 *
+	 * @param int $limitstart
+	 * @param int $limit
+	 *
 	 * @return array
 	 */
-	public function getUserList() {
-		$result = array();
-//		$this->get('user/search', '?username=e&startAt=0&maxResults=1000&includeInactive=1');
-//		$this->get('user/picker', '?query=e&maxResults=1000');
+	public function getUserList($limitstart = 0, $limit = 0) {
+		$users = array();
 
-//		var_dump($this->getResponseCode());
-//		var_dump($this);
-		if ($this->getResponseCode() == 204) {
-//			$this->getResponse();
-//			$success = true;
+		if ($limit == 0) {
+			$limit = $this->getUserCount();
 		}
-		return $result;
+		$total = $limitstart + $limit;
+		while (true) {
+			$this->get('group', '?groupname=jira-users&expand=users[' . $limitstart . ':' . $total . ']');
+			if ($this->getResponseCode() == 200) {
+				$responce = $this->getResponse();
+				foreach($responce->users->items as $item) {
+					$user = new stdClass();
+
+					$user->userid = $item->name;
+					$user->username = $item->name;
+					$user->email = $item->emailAddress;
+
+					$users[] = $user;
+					$limitstart++;
+				}
+				if (count($responce->users->items) != 50 || count($users) >= $limit) {
+					break;
+				}
+			} else {
+				break;
+			}
+		}
+		return $users;
 	}
 
 	/**
 	 * getUserCount
 	 *
-	 * @internal param string $username holds the new user data
-	 *
-	 * @access   public
+	 * @access public
 	 * @return int
 	 */
 	public function getUserCount() {
-		$result = $this->getUserList();
-		return count($result);
+		$count = 0;
+
+		$this->get('group', '?groupname=jira-users');
+		if ($this->getResponseCode() == 200) {
+			$responce = $this->getResponse();
+			$count = $responce->users->size;
+		}
+		return $count;
 	}
 
 	/**
