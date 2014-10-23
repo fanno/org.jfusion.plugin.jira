@@ -77,7 +77,7 @@ class JFusionAdmin_jira extends JFusionAdmin
 	 */
 	function getUserList($limitstart = 0, $limit = 0)
 	{
-	    return $this->helper->getUserList();
+	    return $this->helper->getUserList($limitstart, $limit);
     }
 
     /**
