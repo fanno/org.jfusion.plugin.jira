@@ -174,7 +174,6 @@ class JFusionHelper_jira
 	 */
 	public function deleteUser($username) {
 		$success = false;
-//		$this->delete('user/delete', '?username=' . $username);
 		$this->delete('user', '?username=' . $username);
 		if ($this->getResponseCode() == 204) {
 			$success = true;

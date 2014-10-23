@@ -132,7 +132,7 @@ class JFusionAdmin_jira extends JFusionAdmin
      *
      * @return object with list of users
      */
-    function getUserList()
+    function getUserList($limitstart = 0, $limit = 0)
     {
 	    /**
 	     * @ignore
@@ -140,7 +140,7 @@ class JFusionAdmin_jira extends JFusionAdmin
 	     */
 	    $helper = JFusionFactory::getHelper($this->getJname());
 
-	    return $helper->getUserList();
+	    return $helper->getUserList($limitstart, $limit);
     }
 
     /**
